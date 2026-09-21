@@ -52,6 +52,8 @@ Three things set this apart from an ordinary mirror:
 | `sorgenti/` | one entry per file: where it comes from, what it hashes to, how it is proven |
 | `ci/` | the checks, each with its own tests |
 | `.github/workflows/sorgenti.yml` | the Action that validates and fetches |
+| `docs/INDEX-FORMAT.md` | the signed index, byte by byte |
+| `docs/CI.md` | the publishing pipeline: what runs, what does not, and why |
 
 The entry format is in [`sorgenti/README.md`](sorgenti/README.md).
 
