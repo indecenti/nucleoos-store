@@ -1,0 +1,18 @@
+nome     = "rg"
+versione = "14.1.0"
+origine  = "github.com/BurntSushi/ripgrep"
+# L'asset `x86_64-unknown-linux-musl`. Da riempire: il CI rifiuta una
+# voce senza URL.
+url      = ""
+# L'impronta del binario gia' provato sotto `linuxd` (2026-09-21): e' un
+# static-PIE che usa thread e futex, e il criterio della tappa B e'
+# proprio lui con quattro thread.
+sha256   = "e62198eb19b136b88c330af83647b5a962cb99b6b1f066758568f12de1974849"
+
+# Cercare una parola che c'e' e una che non c'e': la prima deve uscire 0,
+# e questa prova la seconda meta' -- un `rg` che uscisse 0 sempre passerebbe
+# una prova sola e non farebbe il suo mestiere.
+prova    = { args = ["-j4", "nucleo", "/dati"], uscita = 0 }
+
+# Vuole una cartella da cercare, in sola lettura.
+poteri   = { radici = ["/dati"], pagine = 8192 }

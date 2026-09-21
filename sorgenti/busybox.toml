@@ -1,0 +1,18 @@
+nome     = "busybox"
+versione = "1.36.1"
+origine  = "busybox.net"
+# L'asset statico ufficiale per x86_64-linux-musl. Da riempire con l'URL
+# esatto della versione che si pubblica: il CI rifiuta una voce senza.
+url      = ""
+# L'impronta del binario **gia' provato** sotto `linuxd` (2026-09-21).
+# Quando si mettera' l'URL, questa deve combaciare con il checksum che
+# busybox.net pubblica per quella versione: se non combacia, non e' lo
+# stesso file e la voce va rifatta, non aggiustata.
+sha256   = "dbac288c29ba568459550a2da9e7ae0ded6b1fc728ee9fad3044c44e62d6ac14"
+
+# Centinaia di applet in un file da due mebibyte. `echo` e' la prova piu'
+# corta che dimostra il giro intero: carica, scrive sulla console, esce 0.
+prova    = { args = ["echo", "ciao"], uscita = 0 }
+
+# Non tocca niente fuori da se': senza radici non vede nessun file.
+poteri   = { radici = [], pagine = 4096 }
