@@ -54,6 +54,7 @@ Three things set this apart from an ordinary mirror:
 | `.github/workflows/sorgenti.yml` | the Action that validates and fetches |
 | `docs/INDEX-FORMAT.md` | the signed index, byte by byte |
 | `docs/CI.md` | the publishing pipeline: what runs, what does not, and why |
+| `docs/TRUST.md` | what the catalogue defends, what it does not, and the one decision |
 
 The entry format is in [`sorgenti/README.md`](sorgenti/README.md).
 
