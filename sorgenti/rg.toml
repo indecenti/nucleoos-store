@@ -1,3 +1,8 @@
+# **Bozza**: manca l'URL dell'upstream, quindi questa voce non entra
+# nell'indice. Il binario e' provato e l'impronta e' sua; cio' che
+# manca e' la provenienza, che non si inventa.
+bozza    = true
+
 nome     = "rg"
 versione = "14.1.0"
 origine  = "github.com/BurntSushi/ripgrep"
