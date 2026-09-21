@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""Scaricare una voce, e **rifiutarla** se non e' quella dichiarata.
+"""Fetch an entry, and **refuse it** if it is not the one declared.
 
-E' la prima meta' del CI vero (`plans/APP-DI-TERZI.md` §7.2): prendere
-l'asset dall'upstream e confrontarlo con l'impronta che la voce dichiara.
-La seconda meta' -- avviare NucleoOS in QEMU e far girare il binario
-sotto `linuxd` -- vuole la repo di NucleoOS per costruire le immagini.
+This is the first half of the real CI (`plans/APP-DI-TERZI.md` §7.2):
+take the asset from upstream and compare it against the hash the entry
+declares. The second half -- boot NucleoOS in QEMU and run the binary
+under `linuxd` -- needs the NucleoOS repository to build the images.
 
-**L'impronta si calcola mentre i byte arrivano**, non dopo: un asset da
-centinaia di mebibyte non si tiene tutto in memoria per poi guardarlo, e
-tenerlo su disco prima di sapere se e' quello giusto vuol dire scrivere
-byte di cui non si sa niente.
+**The hash is computed as the bytes arrive**, not afterwards: an asset
+of hundreds of megabytes is not held in memory to be looked at later,
+and putting it on disk before knowing whether it is the right one means
+writing bytes nobody knows anything about.
 
-**E il confronto e' contro cio' che la voce dichiara**, che viene
-dall'upstream. Prendere l'impronta di cio' che e' arrivato e chiamarla
-verifica controlla che il byte non si sia rotto in volo -- non che sia il
-byte giusto.
+**And the comparison is against what the entry declares**, which comes
+from upstream. Hashing what arrived and calling it verification checks
+that the bytes did not rot in flight -- not that they are the right
+bytes.
 """
 
 import hashlib
@@ -23,20 +23,21 @@ import tomllib
 from pathlib import Path
 from urllib.request import urlopen
 
-# Quanto si legge per volta. Un mebibyte: abbastanza da non fare una
-# chiamata per pacchetto TCP, poco da non tenere niente di serio in RAM.
+# How much is read at a time. One mebibyte: enough not to make a call per
+# TCP packet, little enough to hold nothing serious in RAM.
 FETTA = 1024 * 1024
 
 
 class NonPresa(Exception):
-    """Con il motivo, che e' l'unica cosa che serve a chi legge il log."""
+    """With the reason, which is the only thing a log reader needs."""
 
 
 def impronta(pezzi) -> str:
-    """Lo SHA-256 di una sequenza di fette, in esadecimale minuscolo.
+    """The SHA-256 of a sequence of chunks, as lowercase hex.
 
-    Sta da sola perche' e' l'unica parte che si puo' provare senza rete:
-    chi la chiama le passa dei byte, e non le importa da dove vengono.
+    It stands alone because it is the only part that can be tested
+    without a network: the caller hands it bytes, and it does not care
+    where they came from.
     """
     h = hashlib.sha256()
     for p in pezzi:
@@ -45,7 +46,7 @@ def impronta(pezzi) -> str:
 
 
 def fette(f, quanto: int = FETTA):
-    """Le fette di un flusso, finche' ce n'e'."""
+    """The chunks of a stream, while there are any."""
     while True:
         p = f.read(quanto)
         if not p:
@@ -54,18 +55,18 @@ def fette(f, quanto: int = FETTA):
 
 
 def prendi(voce: dict, dove: Path) -> int:
-    """Scarica la voce in `dove`. Rende quanti byte, o alza `NonPresa`.
+    """Fetch the entry into `dove`. Returns the byte count, or raises.
 
-    Il file si scrive **mentre** si calcola, e si **cancella** se
-    l'impronta non torna: lasciare in giro un file che non e' quello che
-    dice di essere e' il modo in cui qualcuno lo usa lo stesso.
+    The file is written **while** the hash is computed, and **deleted**
+    if it does not match: leaving a file that is not what it claims to
+    be is how somebody ends up using it anyway.
     """
     if voce.get("bozza"):
-        raise NonPresa(f"{voce.get('nome')}: e' una bozza, non si scarica")
+        raise NonPresa(f"{voce.get('nome')}: it is a draft, not fetched")
     url = voce.get("url") or ""
     atteso = voce.get("sha256") or ""
     if not url or not atteso:
-        raise NonPresa(f"{voce.get('nome')}: senza url o senza sha256")
+        raise NonPresa(f"{voce.get('nome')}: no url or no sha256")
 
     h = hashlib.sha256()
     n = 0
@@ -78,18 +79,18 @@ def prendi(voce: dict, dove: Path) -> int:
                 n += len(p)
     except NonPresa:
         raise
-    except Exception as e:  # rete, DNS, 404: un motivo solo, e si vede
+    except Exception as e:  # network, DNS, 404: one reason, and visible
         dove.unlink(missing_ok=True)
-        raise NonPresa(f"{voce.get('nome')}: non arrivato: {e}") from e
+        raise NonPresa(f"{voce.get('nome')}: did not arrive: {e}") from e
 
     avuto = h.hexdigest()
     if avuto != atteso:
         dove.unlink(missing_ok=True)
         raise NonPresa(
-            f"{voce.get('nome')}: l'impronta non torna\n"
-            f"  dichiarata {atteso}\n"
-            f"  arrivata   {avuto}\n"
-            f"  ({n} byte da {url})"
+            f"{voce.get('nome')}: hash mismatch\n"
+            f"  declared {atteso}\n"
+            f"  arrived  {avuto}\n"
+            f"  ({n} bytes from {url})"
         )
     return n
 
@@ -101,12 +102,12 @@ def main(radice: str = "sorgenti", scarico: str = "scarico") -> int:
         voce = tomllib.loads(via.read_text(encoding="utf-8"))
         nome = voce.get("nome", via.stem)
         if voce.get("bozza"):
-            print(f"{nome}: bozza -- saltata")
+            print(f"{nome}: draft -- skipped")
             saltate += 1
             continue
         try:
             n = prendi(voce, Path(scarico) / nome)
-            print(f"{nome}: {n} byte, impronta giusta")
+            print(f"{nome}: {n} bytes, hash matches")
             prese += 1
         except NonPresa as e:
             print(f"{e}")

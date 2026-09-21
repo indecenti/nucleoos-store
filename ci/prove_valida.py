@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Le prove del controllo, perche' un controllo che non si prova non e' un
-controllo: passerebbe verde anche se non guardasse niente."""
+"""The checker's own tests, because a check that is not tested is not a
+check: it would pass green even if it looked at nothing."""
 
 import sys
 from valida import guai
@@ -23,16 +23,16 @@ def con(**cambi):
 
 
 PROVE = [
-    ("una voce piena va bene", BUONA, []),
-    ("senza url e senza bozza e' rossa", con(url=""), ["`url` vuoto"]),
-    ("senza url ma dichiarata bozza passa", con(url="", bozza=True), []),
-    ("senza sha e senza bozza e' rossa", con(sha256=""), ["`sha256` vuoto"]),
-    ("uno sha corto e' rosso anche in bozza", con(sha256="abc", bozza=True), ["esadecimali"]),
-    ("un url http non basta", con(url="http://x/y"), ["non e' https"]),
-    ("il nome deve essere quello del file", con(nome="rg"), ["si chiama"]),
-    ("una prova senza uscita e' rossa", con(prova={"args": []}), ["`uscita`"]),
-    ("poteri senza pagine sono rossi", con(poteri={"radici": []}), ["pagine"]),
-    ("pagine a zero non sono pagine", con(poteri={"radici": [], "pagine": 0}), ["pagine"]),
+    ("a complete entry is fine", BUONA, []),
+    ("no url and not a draft is red", con(url=""), ["`url` empty"]),
+    ("no url but declared a draft passes", con(url="", bozza=True), []),
+    ("no sha and not a draft is red", con(sha256=""), ["`sha256` empty"]),
+    ("a short sha is red even in a draft", con(sha256="abc", bozza=True), ["hex digits"]),
+    ("an http url is not enough", con(url="http://x/y"), ["not https"]),
+    ("the name must be the file name", con(nome="rg"), ["is called"]),
+    ("a proof without an exit code is red", con(prova={"args": []}), ["`uscita`"]),
+    ("powers without pages are red", con(poteri={"radici": []}), ["pagine"]),
+    ("zero pages are not pages", con(poteri={"radici": [], "pagine": 0}), ["pagine"]),
 ]
 
 
@@ -46,12 +46,12 @@ def main() -> int:
             rotte += 1
             print(f"ROSSO  {nome}")
             if manca:
-                print(f"       non ha detto: {manca}")
+                print(f"       did not say: {manca}")
             if troppo:
-                print(f"       ha detto in piu': {troppo}")
+                print(f"       said extra: {troppo}")
         else:
             print(f"ok     {nome}")
-    print(f"\n{len(PROVE)} prove, {rotte} rosse")
+    print(f"\n{len(PROVE)} tests, {rotte} red")
     return 1 if rotte else 0
 
 

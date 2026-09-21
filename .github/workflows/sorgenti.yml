@@ -1,11 +1,11 @@
-# Le voci del catalogo si leggono, a ogni spinta.
+# Catalogue entries parse, on every push.
 #
-# **Non e' ancora il CI che pubblica** (`plans/APP-DI-TERZI.md` §7.2):
-# quello scarica, avvia NucleoOS in QEMU, fa girare ogni binario sotto
-# `linuxd` e firma l'indice, e ha bisogno della repo di NucleoOS per
-# costruire le immagini. Questo qui e' il primo gradino, e vale per conto
-# suo: fa rispettare la forma di una voce **prima** che qualcuno ci
-# costruisca sopra.
+# **This is not yet the CI that publishes** (`plans/APP-DI-TERZI.md`
+# §7.2): that one downloads, boots NucleoOS in QEMU, runs each binary
+# under `linuxd` and signs the index, and it needs the NucleoOS
+# repository to build the images. This is the first step, and it stands
+# on its own: it enforces the shape of an entry **before** anyone builds
+# on top of it.
 name: sorgenti
 
 on:
@@ -19,18 +19,18 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      # `tomllib` sta nella libreria standard da 3.11: nessuna dipendenza
-      # da installare, e niente da tenere aggiornato.
+      # `tomllib` has been in the standard library since 3.11: nothing to
+      # install, nothing to keep up to date.
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: le prove dei controlli
+      - name: the checks' own tests
         run: cd ci && python3 prove_valida.py && python3 prove_prendi.py
-      - name: le voci
+      - name: the entries
         run: python3 ci/valida.py
-      # Scaricare e verificare: oggi non fa niente, perche' le voci sono
-      # tutte bozze. Sta qui lo stesso, cosi' il giorno che una voce ha
-      # l'URL il giro e' gia' cablato e non si scopre allora se funziona.
-      - name: prendi le voci pronte
+      # Fetch and verify: today it does nothing, because every entry is a
+      # draft. It is wired up anyway, so that the day an entry has a URL
+      # we do not find out then whether the round works.
+      - name: fetch the ready entries
         run: python3 ci/prendi.py
 

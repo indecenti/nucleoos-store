@@ -1,23 +1,23 @@
-# **Bozza**: manca l'URL dell'upstream, quindi questa voce non entra
-# nell'indice. Il binario e' provato e l'impronta e' sua; cio' che
-# manca e' la provenienza, che non si inventa.
+# **Draft**: the upstream URL is missing, so this entry stays out of
+# the index. The binary is proven and the hash is its own; what is
+# missing is provenance, and that is not invented.
 bozza    = true
 
 nome     = "rg"
 versione = "14.1.0"
 origine  = "github.com/BurntSushi/ripgrep"
-# L'asset `x86_64-unknown-linux-musl`. Da riempire: il CI rifiuta una
-# voce senza URL.
+# The `x86_64-unknown-linux-musl` asset. To be filled: CI refuses an
+# entry without a URL.
 url      = ""
-# L'impronta del binario gia' provato sotto `linuxd` (2026-09-21): e' un
-# static-PIE che usa thread e futex, e il criterio della tappa B e'
-# proprio lui con quattro thread.
+# The hash of the binary already proven under `linuxd` (2026-09-21): a
+# static-PIE that uses threads and futexes, and stage B's criterion is
+# exactly this one with four threads.
 sha256   = "e62198eb19b136b88c330af83647b5a962cb99b6b1f066758568f12de1974849"
 
-# Cercare una parola che c'e' e una che non c'e': la prima deve uscire 0,
-# e questa prova la seconda meta' -- un `rg` che uscisse 0 sempre passerebbe
-# una prova sola e non farebbe il suo mestiere.
+# Search for a word that is there and one that is not: the first must
+# exit 0. A `rg` that always exited 0 would pass a single-sided proof
+# and not be doing its job.
 prova    = { args = ["-j4", "nucleo", "/dati"], uscita = 0 }
 
-# Vuole una cartella da cercare, in sola lettura.
+# It wants a folder to search, read-only.
 poteri   = { radici = ["/dati"], pagine = 8192 }

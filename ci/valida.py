@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""Le voci del catalogo si leggono, o non entrano.
+"""Catalogue entries parse, or they do not get in.
 
-Il README promette che una voce senza URL il CI la rifiuta. Finche' resta
-una frase, e' una frase: qui diventa un controllo che gira a ogni push.
+The README promises that CI refuses an entry with no URL. While that
+stays a sentence it is only a sentence: here it becomes a check that
+runs on every push.
 
-**Due no diversi, e non si confondono.** Una voce *malformata* e' un
-errore di chi l'ha scritta -- un `sha256` di quarantadue caratteri, una
-prova che manca -- e va rossa subito. Una voce *incompleta* e' una voce
-onesta che non e' ancora pronta: lo dichiara con `bozza = true`, il
-controllo la lascia passare, e il costruttore dell'indice **la salta**.
-Un controllo rosso mentre si lavora bene insegna a ignorare il rosso.
+**Two different kinds of no, and they do not blur.** A *malformed* entry
+is the author's mistake -- a 42-character `sha256`, a missing proof --
+and goes red at once. An *incomplete* entry is an honest one that is not
+ready: it says so with `bozza = true`, validation lets it through, and
+the index builder **skips it**. A check that goes red while you are
+working correctly teaches people to ignore red.
 """
 
 import sys
@@ -20,60 +21,60 @@ CAMPI = ("nome", "versione", "origine", "url", "sha256", "prova", "poteri")
 
 
 def guai(voce: dict, via: str) -> list[str]:
-    """Che cosa non torna in questa voce. Lista vuota = va bene."""
+    """What does not add up in this entry. Empty list = it is fine."""
     out = []
     bozza = voce.get("bozza", False)
     if not isinstance(bozza, bool):
-        out.append("`bozza` non e' un booleano")
+        out.append("`bozza` is not a boolean")
 
     for campo in CAMPI:
         if campo not in voce:
-            out.append(f"manca `{campo}`")
+            out.append(f"missing `{campo}`")
 
     nome = voce.get("nome", "")
     if isinstance(nome, str) and nome:
         atteso = Path(via).stem
-        # Il nome nel file e il nome del file devono coincidere: un
-        # catalogo in cui `busybox.toml` dichiara `rg` e' un catalogo che
-        # installa una cosa per un'altra.
+        # The name in the file and the name of the file must agree: a
+        # catalogue where `busybox.toml` declares `rg` is a catalogue
+        # that installs one thing for another.
         if nome != atteso and atteso != "":
-            out.append(f"`nome` e' « {nome} » ma il file si chiama « {atteso} »")
+            out.append(f"`nome` is « {nome} » but the file is called « {atteso} »")
 
     sha = voce.get("sha256", "")
     if isinstance(sha, str) and sha:
         if len(sha) != 64 or any(c not in "0123456789abcdef" for c in sha):
-            out.append("`sha256` non e' sessantaquattro cifre esadecimali minuscole")
+            out.append("`sha256` is not 64 lowercase hex digits")
     elif not bozza:
-        out.append("`sha256` vuoto, e la voce non si dichiara bozza")
+        out.append("`sha256` empty, and the entry does not declare itself a draft")
 
     url = voce.get("url", "")
     if isinstance(url, str) and url:
         if not url.startswith("https://"):
-            # L'origine si scarica in CI, dove HTTPS c'e' e costa zero.
-            # Il trasporto senza TLS e' una scelta del **client**, che ha
-            # firma e scadenza a difenderlo; qui no.
-            out.append("`url` non e' https")
+            # The source is fetched in CI, where HTTPS is free. Plain
+            # transport is the **client's** choice, defended by signature
+            # and expiry; not ours.
+            out.append("`url` is not https")
     elif not bozza:
-        out.append("`url` vuoto, e la voce non si dichiara bozza")
+        out.append("`url` empty, and the entry does not declare itself a draft")
 
     prova = voce.get("prova")
     if isinstance(prova, dict):
         if "uscita" not in prova:
-            out.append("`prova` senza `uscita`: « e' partito » non e' un criterio")
+            out.append("`prova` without `uscita`: « it started » is not a criterion")
         if not isinstance(prova.get("args"), list):
-            out.append("`prova.args` non e' una lista")
+            out.append("`prova.args` is not a list")
     elif prova is not None:
-        out.append("`prova` non e' una tabella")
+        out.append("`prova` is not a table")
 
     poteri = voce.get("poteri")
     if isinstance(poteri, dict):
         if not isinstance(poteri.get("radici"), list):
-            out.append("`poteri.radici` non e' una lista")
+            out.append("`poteri.radici` is not a list")
         pagine = poteri.get("pagine")
         if not isinstance(pagine, int) or pagine <= 0:
-            out.append("`poteri.pagine` non e' un numero di pagine")
+            out.append("`poteri.pagine` is not a page count")
     elif poteri is not None:
-        out.append("`poteri` non e' una tabella")
+        out.append("`poteri` is not a table")
 
     return out
 
@@ -81,7 +82,7 @@ def guai(voce: dict, via: str) -> list[str]:
 def main(radice: str = "sorgenti") -> int:
     vie = sorted(Path(radice).glob("*.toml"))
     if not vie:
-        print(f"nessuna voce in {radice}/")
+        print(f"no entries in {radice}/")
         return 1
     rotte = 0
     bozze = 0
@@ -89,7 +90,7 @@ def main(radice: str = "sorgenti") -> int:
         try:
             voce = tomllib.loads(via.read_text(encoding="utf-8"))
         except tomllib.TOMLDecodeError as e:
-            print(f"{via}: non e' TOML: {e}")
+            print(f"{via}: not TOML: {e}")
             rotte += 1
             continue
         g = guai(voce, str(via))
@@ -99,10 +100,10 @@ def main(radice: str = "sorgenti") -> int:
                 print(f"{via}: {riga}")
         elif voce.get("bozza"):
             bozze += 1
-            print(f"{via}: bozza -- non entra nell'indice")
+            print(f"{via}: draft -- stays out of the index")
         else:
-            print(f"{via}: a posto")
-    print(f"\n{len(vie)} voci, {rotte} da sistemare, {bozze} bozze")
+            print(f"{via}: ok")
+    print(f"\n{len(vie)} entries, {rotte} to fix, {bozze} drafts")
     return 1 if rotte else 0
 
 
