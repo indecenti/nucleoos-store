@@ -24,7 +24,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: le prove del controllo
-        run: cd ci && python3 prove_valida.py
+      - name: le prove dei controlli
+        run: cd ci && python3 prove_valida.py && python3 prove_prendi.py
       - name: le voci
         run: python3 ci/valida.py
+      # Scaricare e verificare: oggi non fa niente, perche' le voci sono
+      # tutte bozze. Sta qui lo stesso, cosi' il giorno che una voce ha
+      # l'URL il giro e' gia' cablato e non si scopre allora se funziona.
+      - name: prendi le voci pronte
+        run: python3 ci/prendi.py
+
