@@ -1,0 +1,60 @@
+# Publishes `sito/` to GitHub Pages. **No secrets.**
+#
+# This is not the catalogue's pipeline — that is `pubblica.yml`, which
+# builds NucleoOS from source, runs every entry under `linuxd`, signs
+# the index and publishes what came out. This one only serves what is
+# already in the repository.
+#
+# It exists because the two jobs fail in different ways and only one of
+# them should be able to stop the other. `pubblica.yml` needs a token
+# for the private NucleoOS repository and a signing key; when either is
+# missing or wrong, nothing reaches Pages at all — including an index
+# that was already built and is already signed. Serving is not proving,
+# and it should not be hostage to proving.
+#
+# So: what is in `sito/` was produced by the same tools the pipeline
+# uses (`run.sh giudica`, `pkgbuild --chiave`, `indice`) and carries the
+# same signature; the commit that adds it says which NucleoOS commit
+# judged it. The day `pubblica.yml` runs green, it overwrites all of
+# this by itself, and this workflow goes back to being what it is: the
+# thing that puts bytes on a web server.
+name: sito
+
+on:
+  push:
+    paths:
+      - "sito/**"
+      - ".github/workflows/sito.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # What is being served, in the log: an index nobody can read from
+      # the outside is the one thing worth printing before it goes up.
+      - name: what is going up
+        run: |
+          ls -l sito sito/packs
+          echo "index.nki: $(stat -c%s sito/index.nki) bytes"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: sito
+
+      - id: deploy
+        uses: actions/deploy-pages@v4

@@ -3,14 +3,20 @@ __pycache__/
 *.pyc
 
 # Roba di un giro: i binari scaricati, i pack costruiti, le tabelle
-# generate e il sito. Niente di tutto questo si commette -- il CI lo
-# rifa, e un artefatto in un repository e una cosa che invecchia.
+# generate. Niente di tutto questo si commette -- il CI lo rifa, e un
+# artefatto in un repository e una cosa che invecchia.
 binari/
 packs/
 _sito/
 voci.txt
 verdetti.txt
 indice.txt
-*.nki
-*.nkp
 chiave.der
+
+# **`sito/` fa eccezione, e la ragione va detta.** E' quello che Pages
+# serve, e finche' `pubblica.yml` non gira verde e' l'unica copia
+# dell'indice firmato che esista fuori da una macchina. Invecchia -- ha
+# una scadenza di sette giorni scritta dentro -- e il giorno che la
+# pipeline gira, lo riscrive lei.
+!sito/
+!sito/**
