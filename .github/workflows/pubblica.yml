@@ -61,15 +61,50 @@ jobs:
       - name: fetch, and verify the hash each entry declared
         run: python3 ci/prendi.py sorgenti binari
 
+      # **The token, before it is used.** `actions/checkout` answers
+      # `Bad credentials` to three different problems — a token that is
+      # not valid, one that cannot see this repository, and one that
+      # arrived with a stray newline from a paste — and they need three
+      # different fixes. One `curl` tells them apart, and says which.
+      #
+      # Nothing here prints the token: its length and whether it needed
+      # trimming, which is what a paste gone wrong looks like from the
+      # outside.
+      - name: the token, before using it
+        env:
+          TOKEN: ${{ secrets.NUCLEO_REPO_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "NUCLEO_REPO_TOKEN is not set"
+            exit 1
+          fi
+          PULITO=$(printf %s "$TOKEN" | tr -d '
+ 	')
+          echo "token: ${#TOKEN} characters, ${#PULITO} after trimming"
+          if [ "${#TOKEN}" != "${#PULITO}" ]; then
+            echo "  (it arrived with whitespace — a paste, most likely; using the trimmed one)"
+          fi
+          CODICE=$(curl -s -o /dev/null -w '%{http_code}'             -H "Authorization: Bearer $PULITO"             -H "Accept: application/vnd.github+json"             https://api.github.com/repos/indecenti/nucleo-os)
+          case "$CODICE" in
+            200) echo "the token can see indecenti/nucleo-os" ;;
+            401) echo "401: GitHub does not recognise this token at all. It is expired, revoked, or not a token."; exit 1 ;;
+            403) echo "403: the token is valid but is not allowed. A fine-grained one pending approval looks like this."; exit 1 ;;
+            404) echo "404: the token is valid but does not see indecenti/nucleo-os. A fine-grained token must list that repository explicitly."; exit 1 ;;
+            *)   echo "$CODICE: unexpected"; exit 1 ;;
+          esac
+          echo "PULITO=$PULITO" >> "$GITHUB_ENV"
+
       # The image is built from source: the catalogue is proven against
       # the system as it is now, not against an image somebody uploaded
-      # once.
+      # once. The clone is done by hand rather than with `checkout`
+      # because the token is the trimmed one, and the header is the same
+      # `checkout` builds: the token never reaches a URL, where a git
+      # error message would print it back.
       - name: NucleoOS
-        uses: actions/checkout@v4
-        with:
-          repository: indecenti/nucleo-os
-          token: ${{ secrets.NUCLEO_REPO_TOKEN }}
-          path: nucleo
+        run: |
+          INTESTAZIONE=$(printf 'x-access-token:%s' "$PULITO" | base64 -w0)
+          git -c http.extraheader="AUTHORIZATION: basic $INTESTAZIONE"             clone --depth 1 https://github.com/indecenti/nucleo-os.git nucleo
+          git -C nucleo log --oneline -1
 
       - name: QEMU and OVMF
         run: |
