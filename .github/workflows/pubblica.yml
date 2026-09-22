@@ -78,8 +78,7 @@ jobs:
             echo "NUCLEO_REPO_TOKEN is not set"
             exit 1
           fi
-          PULITO=$(printf %s "$TOKEN" | tr -d '
- 	')
+          PULITO=$(printf %s "$TOKEN" | tr -d '[:space:]')
           echo "token: ${#TOKEN} characters, ${#PULITO} after trimming"
           if [ "${#TOKEN}" != "${#PULITO}" ]; then
             echo "  (it arrived with whitespace — a paste, most likely; using the trimmed one)"
