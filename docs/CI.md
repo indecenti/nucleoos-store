@@ -10,9 +10,44 @@ against a plan rather than improvised.
 |---|---|---|
 | validate entry shape | `ci/valida.py`, 10 tests | **done** |
 | fetch + verify sha256 | `ci/prendi.py`, 8 tests | **done** |
-| run each binary under `linuxd` in QEMU | — | to build |
-| build and sign the index | `tools/indice` in the NucleoOS repo | to build |
-| publish to a mirror | — | needs a host |
+| the two generated tables | `ci/tabelle.py`, 4 tests | **done** |
+| run each binary under `linuxd` in QEMU | `run.sh giudica` in the NucleoOS repo | **done** |
+| build and sign the index | `tools/indice` in the NucleoOS repo | **done** |
+| publish to a mirror | GitHub Pages, `.github/workflows/pubblica.yml` | **wired, never run** |
+
+What is missing is not code any more: it is the two secrets
+(`NUCLEO_REPO_TOKEN`, `NUCLEO_STORE_KEY`) and entries that are no longer
+drafts. Both entries in `sorgenti/` still lack an upstream URL, so
+`prendi.py` fetches nothing and the catalogue would publish zero greens.
+
+## Python writes tables, Rust reads them
+
+The entries are TOML and Python validates them. The judge and the index
+builder are Rust. Between them there are **two generated tables**, one
+line per entry, and no second parser of anything:
+
+```
+sorgenti/*.toml ──ci/tabelle.py voci──► voci.txt ──► run.sh giudica
+                                                         │
+                                                    verdetti.txt
+                                                         │
+sorgenti/*.toml ──ci/tabelle.py indice──► indice.txt ──► tools/indice ──► index.nki
+```
+
+Two parsers of one format is how two programs stop agreeing about what
+was written.
+
+## How the judge decides
+
+Not from the console. The tutor prints the guest's exit code for whoever
+is watching, and the CI is not watching: it reads the **facts** written
+on the disk — `GuestCreated` and `GuestExited` — with the same decoder
+the kernel uses. A log line can be lost; a fact cannot.
+
+`GuestExited` carries the code the guest passed to `exit_group`, and
+**zero is not the same as silence**: a guest killed by its quota, or
+stopped by the tutor, leaves no such fact, and an entry that leaves no
+fact is red rather than green for lack of evidence.
 
 ## The missing middle: proving a binary
 
@@ -73,15 +108,26 @@ with a different name.
 
 Two ways out, neither chosen yet:
 
-- a static host serving plain HTTP (a free-tier VPS with nginx);
-- teach `pkgd` to use `tls.connect` — the system already has TLS 1.3,
-  and `fetch` uses it — and publish somewhere that serves HTTPS from a
-  stable hostname **without cross-host redirects**. GitHub Pages
-  qualifies where Releases do not.
+**Chosen, and measured** (2026-09-22): the second. GitHub Pages, and
+`pkgd` speaks TLS.
 
-The second costs a small amount of code in `pkgd` and no money. It has
-not been verified that Pages behaves as assumed; that check comes before
-the choice.
+What the measurements said, before the choice rather than after:
+
+- plain HTTP on Pages **does not exist**: `http://` answers `301` to
+  `https://` on the *same* host, so the redirect is not the cross-host
+  one that Releases do — the wall is only the scheme;
+- a static file arrives with `Content-Length` and no
+  `Transfer-Encoding`, which is the only shape `pkgd`'s reader knows;
+- the certificate chain of `*.github.io` is **RSA from leaf to root**
+  (Let's Encrypt, anchored at ISRG Root X1). Asking GitHub for an
+  ECDSA-only chain fails the handshake: that certificate does not
+  exist. So `tlsd` turned on RSA verification, and two of its ceilings
+  had to grow — the chain does not fit in 2 048 bytes, and neither do
+  its record buffers.
+
+Pages serves a project under the repository's name, not at the root of
+the site, so the index lives at `/nucleoos-store/index.nki` and every
+pack path in the index carries that prefix.
 
 ## What the catalogue will contain at first
 

@@ -1,0 +1,16 @@
+# I .pyc non sono sorgenti: li rigenera chiunque esegua le prove.
+__pycache__/
+*.pyc
+
+# Roba di un giro: i binari scaricati, i pack costruiti, le tabelle
+# generate e il sito. Niente di tutto questo si commette -- il CI lo
+# rifa, e un artefatto in un repository e una cosa che invecchia.
+binari/
+packs/
+_sito/
+voci.txt
+verdetti.txt
+indice.txt
+*.nki
+*.nkp
+chiave.der

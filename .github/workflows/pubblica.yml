@@ -1,0 +1,158 @@
+# The pipeline that fills the catalogue (`docs/CI.md`).
+#
+# It does the one thing that makes this catalogue different from a
+# mirror: it **runs every entry inside NucleoOS**, under `linuxd`, and
+# publishes only what did what it said.
+#
+# The chain, in order, and each link refuses rather than guesses:
+#   valida.py   the shape of every entry
+#   prendi.py   download, and the sha256 the entry declared
+#   giudica     boot NucleoOS in QEMU, run each entry under linuxd, read
+#               the verdict from the **facts on the disk** (GuestExited)
+#   pkgbuild    one signed pack per entry
+#   indice      the signed index — green only, and the count may not drop
+#   Pages       publish
+#
+# It needs two secrets, and neither can be worked around:
+#   NUCLEO_REPO_TOKEN  read access to the (private) NucleoOS repository,
+#                      because the image is built from source
+#   NUCLEO_STORE_KEY   the publishing key (PKCS#8 DER, base64). Whoever
+#                      holds it decides what NucleoOS will agree to
+#                      install — see docs/TRUST.md
+name: pubblica
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Once a week. A catalogue that rebuilt on every push would publish
+    # a new index for a comma in a README, and the expiry — not the
+    # frequency — is what keeps a mirror from serving stale bytes.
+    - cron: "17 4 * * 1"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pubblica
+  cancel-in-progress: false
+
+jobs:
+  pubblica:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: the checks' own tests
+        run: cd ci && python3 prove_valida.py && python3 prove_prendi.py && python3 prove_tabelle.py
+
+      - name: the entries
+        run: python3 ci/valida.py
+
+      - name: fetch, and verify the hash each entry declared
+        run: python3 ci/prendi.py --in binari
+
+      # The image is built from source: the catalogue is proven against
+      # the system as it is now, not against an image somebody uploaded
+      # once.
+      - name: NucleoOS
+        uses: actions/checkout@v4
+        with:
+          repository: indecenti/nucleo-os
+          token: ${{ secrets.NUCLEO_REPO_TOKEN }}
+          path: nucleo
+
+      - name: QEMU and OVMF
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends qemu-system-x86 ovmf
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            nucleo/target
+          key: store-${{ hashFiles('nucleo/Cargo.lock', 'nucleo/rust-toolchain.toml') }}
+
+      - name: what the judge must run
+        run: python3 ci/tabelle.py voci sorgenti binari > voci.txt
+
+      # The judge boots the system once and runs every entry in it. Its
+      # verdict comes from GuestCreated/GuestExited on the disk, not from
+      # the console: a log line can be lost, a fact cannot.
+      - name: run every entry under linuxd, inside NucleoOS
+        working-directory: nucleo
+        run: |
+          chmod +x run.sh
+          ./run.sh giudica ../voci.txt ../binari ../verdetti.txt
+
+      - name: the publishing key
+        env:
+          CHIAVE: ${{ secrets.NUCLEO_STORE_KEY }}
+        run: |
+          if [ -z "$CHIAVE" ]; then
+            echo "manca NUCLEO_STORE_KEY: senza, i pack escono non firmati e nessun sistema li installa"
+            exit 1
+          fi
+          printf '%s' "$CHIAVE" | base64 -d > chiave.der
+
+      - name: one signed pack per entry
+        run: |
+          mkdir -p packs
+          python3 - <<'PY' > comandi.sh
+          import tomllib, pathlib, shlex
+          for f in sorted(pathlib.Path("sorgenti").glob("*.toml")):
+              v = tomllib.loads(f.read_text(encoding="utf-8"))
+              if v.get("bozza"):
+                  continue
+              nome, ver = v["nome"], v["versione"]
+              binario = pathlib.Path("binari") / nome
+              if not binario.exists():
+                  continue
+              poteri = ",".join(v.get("poteri", {}).get("chiede", [])) or None
+              args = ["cargo", "run", "--release", "-p", "pkgbuild", "--manifest-path",
+                      "nucleo/Cargo.toml", "--", "--nome", nome, "--versione", ver,
+                      "--macchina", "linux", "--programma", str(binario),
+                      "--uscita", f"packs/{nome}-{ver}.nkp", "--chiave", "chiave.der"]
+              if poteri:
+                  args += ["--puo", poteri]
+              print(" ".join(shlex.quote(a) for a in args))
+          PY
+          sh -e comandi.sh
+
+      - name: the signed index, green only
+        run: |
+          mkdir -p _sito/packs
+          python3 ci/tabelle.py indice sorgenti verdetti.txt packs > indice.txt
+          # The ratchet needs the index that is published right now: a
+          # count that may drop in silence answers nothing.
+          curl -fsS -o precedente.nki "https://indecenti.github.io/nucleoos-store/index.nki" \
+            && PREC="--precedente precedente.nki" || PREC=""
+          cargo run --release -p indice --manifest-path nucleo/Cargo.toml -- \
+            --voci indice.txt --chiave chiave.der \
+            --host indecenti.github.io --porta 443 --giorni 7 \
+            --uscita _sito/index.nki $PREC
+
+      - name: the site
+        run: |
+          cp packs/*.nkp _sito/packs/ 2>/dev/null || true
+          cp docs/INDEX-FORMAT.md _sito/ 2>/dev/null || true
+          ls -l _sito _sito/packs
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _sito
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
