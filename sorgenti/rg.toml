@@ -1,23 +1,33 @@
-# **Draft**: the upstream URL is missing, so this entry stays out of
-# the index. The binary is proven and the hash is its own; what is
-# missing is provenance, and that is not invented.
-bozza    = true
-
+# The first **Rust** binary of somebody else's in the catalogue:
+# static-PIE, jemalloc, PCRE2, CPU features looked up at runtime, and
+# real threads. It ran under `linuxd` inside NucleoOS on 2026-09-22 and
+# exited 0.
+#
+# **Rewritten rather than adjusted**, like busybox and for the same
+# reason: the hash it used to carry belonged to a local copy that does
+# not come from this tarball — 5 408 904 bytes against the 6 590 000 of
+# what upstream publishes. Same version, same target, different file.
+# So the origin became the truth: fetch the release, prove what comes
+# out of it, write that.
 nome     = "rg"
 versione = "14.1.0"
 origine  = "github.com/BurntSushi/ripgrep"
-# The `x86_64-unknown-linux-musl` asset. To be filled: CI refuses an
-# entry without a URL.
-url      = ""
-# The hash of the binary already proven under `linuxd` (2026-09-21): a
-# static-PIE that uses threads and futexes, and stage B's criterion is
-# exactly this one with four threads.
-sha256   = "e62198eb19b136b88c330af83647b5a962cb99b6b1f066758568f12de1974849"
+# Rust and Go ship archives, never bare binaries: `dentro` names the
+# member that runs, and `sha256` is **its** hash — not the archive's.
+# The archive is a wrapper; the binary is what somebody executes.
+url      = "https://github.com/BurntSushi/ripgrep/releases/download/14.1.0/ripgrep-14.1.0-x86_64-unknown-linux-musl.tar.gz"
+dentro   = "ripgrep-14.1.0-x86_64-unknown-linux-musl/rg"
+sha256   = "c2feed7a376d3754958fa6235a6ef88a74bcabc9b0cfccacbd48939b5f87860d"
 
-# Search for a word that is there and one that is not: the first must
-# exit 0. A `rg` that always exited 0 would pass a single-sided proof
-# and not be doing its job.
-prova    = { args = ["-j4", "nucleo", "/dati"], uscita = 0 }
+# `--version` and not a search, and the limit is the judge's, not
+# ripgrep's: today it hands no folder to a guest, so a proof that reads
+# files could not run. It is the weaker proof of the two — it says the
+# binary loads, resolves its CPU features and exits, which for a
+# static-PIE with jemalloc is already most of what can go wrong — and it
+# gets replaced by the pair (`-j4` on a word that is there and one that
+# is not) the day the judge can hand a root.
+prova    = { args = ["--version"], uscita = 0 }
 
-# It wants a folder to search, read-only.
-poteri   = { radici = ["/dati"], pagine = 8192 }
+# It wants a folder to search, when it will be given one: declared here
+# because the manifest is the limit the system imposes, not a promise.
+poteri   = { radici = [], pagine = 8192 }

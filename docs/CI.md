@@ -15,10 +15,11 @@ against a plan rather than improvised.
 | build and sign the index | `tools/indice` in the NucleoOS repo | **done** |
 | publish to a mirror | GitHub Pages, `.github/workflows/pubblica.yml` | **wired, never run** |
 
-What is missing is not code any more: it is the two secrets
-(`NUCLEO_REPO_TOKEN`, `NUCLEO_STORE_KEY`) and entries that are no longer
-drafts. Both entries in `sorgenti/` still lack an upstream URL, so
-`prendi.py` fetches nothing and the catalogue would publish zero greens.
+What is missing is not code any more, and it is not entries either:
+it is the **two secrets** (`NUCLEO_REPO_TOKEN`, `NUCLEO_STORE_KEY`).
+Both entries were rewritten on 2026-09-22 from their origin down — the
+upstream file fetched, hashed and **proven under `linuxd`** — so the
+first index this pipeline publishes will carry two greens.
 
 ## Python writes tables, Rust reads them
 
@@ -128,6 +129,19 @@ What the measurements said, before the choice rather than after:
 Pages serves a project under the repository's name, not at the root of
 the site, so the index lives at `/nucleoos-store/index.nki` and every
 pack path in the index carries that prefix.
+
+## Provenance is not adjusted, it is redone
+
+Both entries used to carry the hash of a local copy that did not come
+from the origin they named: busybox's was Ubuntu's build (glibc, twice
+the size) under a `busybox.net` origin, and ripgrep's was a file that is
+not in the published tarball — same version, same target, different
+bytes.
+
+Neither was patched. The origin became the truth: fetch what upstream
+publishes, run **that** under `linuxd`, and write what came out. An
+entry whose provenance and whose proof are about two different files is
+worse than no entry, because it looks like one.
 
 ## What the catalogue will contain at first
 

@@ -59,7 +59,7 @@ jobs:
         run: python3 ci/valida.py
 
       - name: fetch, and verify the hash each entry declared
-        run: python3 ci/prendi.py --in binari
+        run: python3 ci/prendi.py sorgenti binari
 
       # The image is built from source: the catalogue is proven against
       # the system as it is now, not against an image somebody uploaded

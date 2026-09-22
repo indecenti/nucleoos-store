@@ -1,22 +1,25 @@
-# **Draft**: the upstream URL is missing, so this entry stays out of
-# the index. The binary is proven and the hash is its own; what is
-# missing is provenance, and that is not invented.
-bozza    = true
-
+# The official static build, and it is the one that was proven: this
+# binary ran under `linuxd` inside NucleoOS on 2026-09-22 and exited 0.
+#
+# **This entry was rewritten rather than adjusted.** It used to name
+# `busybox.net` as the origin while carrying the hash of a binary that
+# came from Ubuntu's package — a different file, glibc instead of musl,
+# twice the size. The hash did not match the origin, so the entry was
+# redone from the origin down: fetch what busybox.net publishes, prove
+# *that*, write what came out. An entry whose provenance and whose proof
+# are about two different files is worse than no entry at all.
 nome     = "busybox"
-versione = "1.36.1"
+versione = "1.35.0"
 origine  = "busybox.net"
-# The official static asset for x86_64-linux-musl. To be filled with the
-# exact URL of the version published: CI refuses an entry without one.
-url      = ""
-# The hash of the binary **already proven** under `linuxd`
-# (2026-09-21). When the URL is filled in, this must match the checksum
-# busybox.net publishes for that version: if it does not, it is not the
-# same file, and the entry is redone, not adjusted.
-sha256   = "dbac288c29ba568459550a2da9e7ae0ded6b1fc728ee9fad3044c44e62d6ac14"
+url      = "https://busybox.net/downloads/binaries/1.35.0-x86_64-linux-musl/busybox"
+# 1 131 168 bytes, statically linked, stripped.
+sha256   = "6e123e7f3202a8c1e9b1f94d8941580a25135382b99e8d3e34fb858bba311348"
 
-# Hundreds of applets in a two-megabyte file. `echo` is the shortest
-# proof of the whole round: it loads, writes to the console, exits 0.
+# Hundreds of applets in one megabyte. `echo` is the shortest proof of
+# the whole round: it loads, writes to the console, exits 0 — and a
+# guest that exits leaves `GuestExited` on the disk, which is what the
+# judge reads. A guest that dies another way leaves nothing, and an
+# entry that leaves nothing is red.
 prova    = { args = ["echo", "ciao"], uscita = 0 }
 
 # It touches nothing outside itself: with no roots it sees no files.
