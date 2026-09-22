@@ -8,6 +8,8 @@ has none, and then people stop believing it.
 """
 
 import hashlib
+import io
+import tarfile
 import sys
 import tempfile
 from pathlib import Path
@@ -85,6 +87,52 @@ def prove():
                 return "did not arrive" in str(e) and not out.exists()
 
     yield "a missing source is a no with a reason", manca_la_fonte
+
+    def archivio(d: Path, membro: str = "dentro/rg", corpo: bytes = b"abc") -> Path:
+        """A .tar.gz with one member, like every Rust release."""
+        via = d / "roba.tar.gz"
+        with tarfile.open(via, "w:gz") as t:
+            info = tarfile.TarInfo(membro)
+            info.size = len(corpo)
+            t.addfile(info, io.BytesIO(corpo))
+        return via
+
+    def da_un_archivio():
+        with tempfile.TemporaryDirectory() as t:
+            d = Path(t)
+            out = d / "out"
+            # `sha256` is the hash of the **binary**, never the
+            # archive's: it is the file that runs.
+            n = prendi({"nome": "x", "url": via_file(archivio(d)), "sha256": ABC, "dentro": "dentro/rg"}, out)
+            return n == 3 and out.read_bytes() == b"abc"
+
+    yield "an archive gives up the member it was asked for", da_un_archivio
+
+    def membro_che_non_ce():
+        with tempfile.TemporaryDirectory() as t:
+            d = Path(t)
+            out = d / "out"
+            try:
+                prendi({"nome": "x", "url": via_file(archivio(d)), "sha256": ABC, "dentro": "altro"}, out)
+                return False
+            except NonPresa as e:
+                return "not in the archive" in str(e) and not out.exists()
+
+    yield "a member that is not there is a no with its name", membro_che_non_ce
+
+    def archivio_che_non_e_un_archivio():
+        with tempfile.TemporaryDirectory() as t:
+            d = Path(t)
+            src = d / "fonte"
+            src.write_bytes(b"abc")
+            out = d / "out"
+            try:
+                prendi({"nome": "x", "url": via_file(src), "sha256": ABC, "dentro": "rg"}, out)
+                return False
+            except NonPresa as e:
+                return "not an archive" in str(e) and not out.exists()
+
+    yield "asking inside something that is not an archive is refused", archivio_che_non_e_un_archivio
 
 
 def main() -> int:

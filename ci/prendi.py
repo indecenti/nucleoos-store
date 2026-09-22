@@ -18,6 +18,8 @@ bytes.
 """
 
 import hashlib
+import tarfile
+import zipfile
 import sys
 import tomllib
 from pathlib import Path
@@ -54,6 +56,54 @@ def fette(f, quanto: int = FETTA):
         yield p
 
 
+def estrai(via: Path, dentro: str) -> int:
+    """Replace the archive at `via` with the member `dentro`.
+
+    **The kind is read from the bytes, not from the name.** The file we
+    downloaded is named by us, not by upstream: it has no extension to
+    read, and a URL can redirect to something that does not carry one
+    either. `tarfile` and `zipfile` both know how to recognise their own.
+
+    A member that is not a plain file — a symlink, a device, a directory
+    — is refused rather than written: an archive is somebody else's
+    bytes, and the first thing it can try is to write something we did
+    not ask for.
+    """
+    fuori = via.with_name(via.name + ".estratto")
+    if zipfile.is_zipfile(via):
+        with zipfile.ZipFile(via) as z:
+            try:
+                info = z.getinfo(dentro)
+            except KeyError as e:
+                raise NonPresa(f"`{dentro}` is not in the archive") from e
+            if info.is_dir():
+                raise NonPresa(f"`{dentro}` is a directory")
+            with z.open(info) as f, fuori.open("wb") as out:
+                for p in fette(f):
+                    out.write(p)
+    else:
+        try:
+            t = tarfile.open(via, "r:*")
+        except tarfile.TarError as e:
+            raise NonPresa(f"not an archive this knows: {e}") from e
+        with t:
+            try:
+                m = t.getmember(dentro)
+            except KeyError as e:
+                raise NonPresa(f"`{dentro}` is not in the archive") from e
+            if not m.isfile():
+                raise NonPresa(f"`{dentro}` is not a plain file")
+            f = t.extractfile(m)
+            if f is None:
+                raise NonPresa(f"`{dentro}` has no content")
+            with f, fuori.open("wb") as out:
+                for p in fette(f):
+                    out.write(p)
+    via.unlink()
+    fuori.replace(via)
+    return via.stat().st_size
+
+
 def prendi(voce: dict, dove: Path) -> int:
     """Fetch the entry into `dove`. Returns the byte count, or raises.
 
@@ -65,16 +115,15 @@ def prendi(voce: dict, dove: Path) -> int:
         raise NonPresa(f"{voce.get('nome')}: it is a draft, not fetched")
     url = voce.get("url") or ""
     atteso = voce.get("sha256") or ""
+    dentro = voce.get("dentro") or ""
     if not url or not atteso:
         raise NonPresa(f"{voce.get('nome')}: no url or no sha256")
 
-    h = hashlib.sha256()
     n = 0
     dove.parent.mkdir(parents=True, exist_ok=True)
     try:
         with urlopen(url, timeout=60) as r, dove.open("wb") as out:
             for p in fette(r):
-                h.update(p)
                 out.write(p)
                 n += len(p)
     except NonPresa:
@@ -83,6 +132,30 @@ def prendi(voce: dict, dove: Path) -> int:
         dove.unlink(missing_ok=True)
         raise NonPresa(f"{voce.get('nome')}: did not arrive: {e}") from e
 
+    # **Almost nothing upstream ships a bare binary.** Rust and Go
+    # releases are `.tar.gz`, and an entry that could only name a plain
+    # file would leave most of the catalogue unreachable. So an entry may
+    # say `dentro`: then `url` is an archive, and that is the member we
+    # run.
+    #
+    # `sha256` stays the hash of **the file that runs**, never the
+    # archive's: it is the thing the judge boots and the thing the pack
+    # carries, and pinning anything else would pin something nobody
+    # executes.
+    if dentro:
+        try:
+            n = estrai(dove, dentro)
+        except NonPresa:
+            dove.unlink(missing_ok=True)
+            raise
+        except Exception as e:
+            dove.unlink(missing_ok=True)
+            raise NonPresa(f"{voce.get('nome')}: the archive did not open: {e}") from e
+
+    h = hashlib.sha256()
+    with dove.open("rb") as f:
+        for p in fette(f):
+            h.update(p)
     avuto = h.hexdigest()
     if avuto != atteso:
         dove.unlink(missing_ok=True)

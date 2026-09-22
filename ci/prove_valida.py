@@ -33,6 +33,12 @@ PROVE = [
     ("a proof without an exit code is red", con(prova={"args": []}), ["`uscita`"]),
     ("powers without pages are red", con(poteri={"radici": []}), ["pagine"]),
     ("zero pages are not pages", con(poteri={"radici": [], "pagine": 0}), ["pagine"]),
+    # `dentro`: the member of an archive, when upstream ships one — which
+    # is almost always. It is somebody else's path, so it is checked.
+    ("a member inside an archive is fine", con(dentro="ripgrep-14.1.0/rg"), []),
+    ("a member that climbs out is red", con(dentro="../../etc/passwd"), ["climbs out"]),
+    ("an absolute member is red", con(dentro="/bin/sh"), ["climbs out"]),
+    ("a directory does not run", con(dentro="ripgrep-14.1.0/"), ["directory"]),
 ]
 
 

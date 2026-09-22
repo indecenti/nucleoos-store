@@ -47,6 +47,17 @@ def guai(voce: dict, via: str) -> list[str]:
     elif not bozza:
         out.append("`sha256` empty, and the entry does not declare itself a draft")
 
+    # `dentro` is optional and says the entry's binary lives **inside**
+    # what `url` points at. Almost nothing upstream ships a bare file.
+    dentro = voce.get("dentro", "")
+    if not isinstance(dentro, str):
+        out.append("`dentro` is not a string")
+    elif dentro:
+        if dentro.startswith("/") or ".." in dentro.split("/"):
+            out.append("`dentro` climbs out of the archive")
+        if dentro.endswith("/"):
+            out.append("`dentro` names a directory, and a directory does not run")
+
     url = voce.get("url", "")
     if isinstance(url, str) and url:
         if not url.startswith("https://"):
